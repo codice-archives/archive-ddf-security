@@ -70,8 +70,8 @@ public class AuthorizationFilter implements Filter {
         Collection<CollectionPermission> permissions = policy.getAllowedAttributePermissions();
 
         boolean permitted = true;
-        for(CollectionPermission permission : permissions) {
-            if(subject == null || !subject.isPermittedAll(permission.getPermissionList())) {
+        for (CollectionPermission permission : permissions) {
+            if (subject == null || !subject.isPermittedAll(permission.getPermissionList())) {
                 permitted = false;
             }
         }
