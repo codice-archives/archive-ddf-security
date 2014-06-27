@@ -41,13 +41,13 @@
         http://aries.apache.org/schemas/blueprint-cm/blueprint-cm-1.1.0.xsd
         http://cxf.apache.org/blueprint/jaxws
         http://cxf.apache.org/blueprint/schemas/jaxws.xsd" default-activation="lazy">
-        
+
     <type-converters>
         <bean class="org.apache.karaf.jaas.modules.properties.PropertiesConverter"/>
-    </type-converters> 
+    </type-converters>
 
     <ext:property-placeholder />
-    
+
     <cm:property-placeholder persistent-id="ddf.security.sts" placeholder-prefix="$sts{" update-strategy="reload">
         <cm:default-properties>
             <cm:property name="signatureProperties" value="file:${ddf.home}/etc/ws-security/issuer/signature.properties"/>
@@ -61,14 +61,14 @@
             <cm:property name="lifetime" value="1800" />
         </cm:default-properties>
     </cm:property-placeholder>
-    
+
     <!-- LDAP CONFIGURATION -->
     <bean id="claimsManager" class="org.apache.cxf.sts.claims.ClaimsManager">
         <property name="claimHandlers" ref="claimsHandler" />
     </bean>
 
-    <reference-list id="claimsHandler" interface="org.apache.cxf.sts.claims.ClaimsHandler"/> 
-    
+    <reference-list id="claimsHandler" interface="org.apache.cxf.sts.claims.ClaimsHandler"/>
+
     <!-- PROVIDER CONFIGURATION -->
     <bean id="claimsAttributeProvider" class="org.apache.cxf.sts.claims.ClaimsAttributeStatementProvider" />
 
@@ -78,7 +78,7 @@
         <property name="validateOperation" ref="validateDelegate"/>
     </bean>
 
-    <bean id="authnStatementProvider" class="ddf.security.sts.UnspecifiedAuthNStatementProvider" /> 
+    <bean id="authnStatementProvider" class="ddf.security.sts.UnspecifiedAuthNStatementProvider" />
 
     <bean id="samlTokenProvider"
           class="org.apache.cxf.sts.token.provider.SAMLTokenProvider">
@@ -106,6 +106,8 @@
 
     <bean id="hokDelegationHandler" class="org.apache.cxf.sts.token.delegation.HOKDelegationHandler"></bean>
 
+    <bean id="x509DelegationHandler" class="org.codice.ddf.security.delegation.x509.X509DelegationHandler"></bean>
+
     <!-- DELEGATE CONFIGURATION -->
     <bean id="issueDelegate"
           class="org.apache.cxf.sts.operation.TokenIssueOperation">
@@ -119,6 +121,7 @@
                 <ref component-id="utDelegationHandler" />
                 <ref component-id="samlDelegationHandler" />
                 <ref component-id="hokDelegationHandler" />
+                <ref component-id="x509DelegationHandler" />
             </list>
         </property>
         <property name="tokenValidators" ref="tokenValidatorList"/>
@@ -131,7 +134,7 @@
         <property name="claimsManager" ref="claimsManager" />
         <property name="tokenStore" ref="defaultTokenStore" />
     </bean>
-    
+
     <bean id="validateDelegate"
           class="org.apache.cxf.sts.operation.TokenValidateOperation">
         <property name="tokenProviders">
@@ -139,7 +142,7 @@
                 <ref component-id="samlTokenProvider"/>
             </list>
         </property>
-        <property name="tokenValidators" ref="tokenValidatorList"/> 
+        <property name="tokenValidators" ref="tokenValidatorList"/>
         <property name="stsProperties" ref="STSProperties"/>
         <property name="tokenStore" ref="defaultTokenStore" />
     </bean>
@@ -211,8 +214,8 @@
             <entry key="ws-security.role.classifier.type" value="classname" />
         </jaxws:properties>
     </jaxws:endpoint>
-    
-    <reference-list id="tokenValidatorList" interface="org.apache.cxf.sts.token.validator.TokenValidator"/> 
+
+    <reference-list id="tokenValidatorList" interface="org.apache.cxf.sts.token.validator.TokenValidator"/>
 
 </blueprint>
 
