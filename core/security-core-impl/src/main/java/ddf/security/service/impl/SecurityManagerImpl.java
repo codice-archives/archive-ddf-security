@@ -1,16 +1,16 @@
 /**
  * Copyright (c) Codice Foundation
- * 
+ *
  * This is free software: you can redistribute it and/or modify it under the terms of the GNU Lesser
  * General Public License as published by the Free Software Foundation, either version 3 of the
  * License, or any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
  * even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
  * Lesser General Public License for more details. A copy of the GNU Lesser General Public License
  * is distributed along with this program and can be found at
  * <http://www.gnu.org/licenses/lgpl.html>.
- * 
+ *
  **/
 package ddf.security.service.impl;
 
@@ -45,17 +45,14 @@ public class SecurityManagerImpl implements SecurityManager {
 
     private Logger logger = LoggerFactory.getLogger(SecurityManagerImpl.class);
 
+    /**
+     * Creates a new security manager with the collection of given realms.
+     */
     public SecurityManagerImpl() {
         // create the new security manager
         internalManager = new DefaultSecurityManager();
     }
 
-    /**
-     * Creates a new security manager with the collection of given realms.
-     *
-     * @param realms
-     *            The realms used for the backing authZ and authN operations.
-     */
     public void setRealms(Collection<Realm> realms) {
         this.realms = realms;
         // update the default manager with current realm list
@@ -76,7 +73,7 @@ public class SecurityManagerImpl implements SecurityManager {
 
     /**
      * Creates a new subject based on an incoming AuthenticationToken
-     * 
+     *
      * @param token
      *            AuthenticationToken that should be used to authenticate the
      *            user and use as the basis for the new subject.
@@ -107,7 +104,7 @@ public class SecurityManagerImpl implements SecurityManager {
 
     /**
      * Creates a new subject using an incoming SecurityToken.
-     * 
+     *
      * @param token
      *            Security token that the subject should be populated with
      * @return new subject
@@ -125,7 +122,7 @@ public class SecurityManagerImpl implements SecurityManager {
 
     /**
      * Creates a new principal object from an incoming security token.
-     * 
+     *
      * @param token
      *            SecurityToken that contains the principals.
      * @return new SimplePrincipalCollection
