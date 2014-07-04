@@ -53,6 +53,9 @@ public class SecurityManagerImpl implements SecurityManager {
         internalManager = new DefaultSecurityManager();
     }
 
+    /**
+     * @param realms The realms used for the backing authZ and authN operations.
+     */
     public void setRealms(Collection<Realm> realms) {
         this.realms = realms;
         // update the default manager with current realm list
@@ -67,36 +70,34 @@ public class SecurityManagerImpl implements SecurityManager {
             return getSubject((SecurityToken) token);
         } else {
             throw new SecurityServiceException(
-                    "Incoming token object NOT supported by security manager implementation. Currently supported types are AuthenticationToken and SecurityToken");
+                "Incoming token object NOT supported by security manager implementation. Currently supported types are AuthenticationToken and SecurityToken");
         }
     }
 
     /**
      * Creates a new subject based on an incoming AuthenticationToken
      *
-     * @param token
-     *            AuthenticationToken that should be used to authenticate the
-     *            user and use as the basis for the new subject.
+     * @param token AuthenticationToken that should be used to authenticate the
+     *              user and use as the basis for the new subject.
      * @return new subject
      * @throws SecurityServiceException
      */
     private Subject getSubject(AuthenticationToken token) throws SecurityServiceException {
         if (token.getCredentials() == null) {
             throw new SecurityServiceException(
-                    "CANNOT AUTHENTICATE USER: Authentication token did not contain any credentials. "
-                            + "This is generally due to an error on the authentication server.");
+                "CANNOT AUTHENTICATE USER: Authentication token did not contain any credentials. "
+                + "This is generally due to an error on the authentication server.");
         }
         // authenticate the token - this will call the stsrealm
         AuthenticationInfo info = internalManager.authenticate(token);
         SecurityToken secToken = info.getPrincipals().oneByType(SecurityToken.class);
         if (secToken == null) {
-            throw new SecurityServiceException(
-                    "Did not receive a security token back, cannot complete authentication.");
+            throw new SecurityServiceException("Did not receive a security token back, cannot complete authentication.");
         }
         try {
             // create the subject that will be returned back to the user
             return new SubjectImpl(createPrincipalFromToken(secToken), true, new SimpleSession(UUID
-                    .randomUUID().toString()), internalManager);
+                .randomUUID().toString()), internalManager);
         } catch (Exception e) {
             throw new SecurityServiceException("Could not create a new subject", e);
         }
@@ -105,8 +106,7 @@ public class SecurityManagerImpl implements SecurityManager {
     /**
      * Creates a new subject using an incoming SecurityToken.
      *
-     * @param token
-     *            Security token that the subject should be populated with
+     * @param token Security token that the subject should be populated with
      * @return new subject
      * @throws SecurityServiceException
      */
@@ -114,7 +114,7 @@ public class SecurityManagerImpl implements SecurityManager {
         try {
             // return the newly created subject
             return new SubjectImpl(createPrincipalFromToken(token), true, new SimpleSession(UUID
-                    .randomUUID().toString()), internalManager);
+                .randomUUID().toString()), internalManager);
         } catch (Exception e) {
             throw new SecurityServiceException("Could not create a new subject", e);
         }
@@ -123,8 +123,7 @@ public class SecurityManagerImpl implements SecurityManager {
     /**
      * Creates a new principal object from an incoming security token.
      *
-     * @param token
-     *            SecurityToken that contains the principals.
+     * @param token SecurityToken that contains the principals.
      * @return new SimplePrincipalCollection
      */
     private SimplePrincipalCollection createPrincipalFromToken(SecurityToken token) {

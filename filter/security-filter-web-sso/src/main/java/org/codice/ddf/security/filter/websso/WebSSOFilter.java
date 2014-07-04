@@ -75,25 +75,22 @@ public class WebSSOFilter implements Filter {
      * convert to a SAML assertion, we attach them to the request and continue
      * down the chain.
      *
-     * @param servletRequest
-     *            incoming http request
-     * @param servletResponse
-     *            response stream for returning the response
-     * @param filterChain
-     *            chain of filters to be invoked following this filter
+     * @param servletRequest  incoming http request
+     * @param servletResponse response stream for returning the response
+     * @param filterChain     chain of filters to be invoked following this filter
      * @throws IOException
      * @throws ServletException
      */
     @Override
     public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse,
-            FilterChain filterChain) throws IOException, ServletException {
+      FilterChain filterChain) throws IOException, ServletException {
         LOGGER.debug("Performing doFilter() on WebSSOFilter");
         HttpServletRequest httpRequest = (HttpServletRequest) servletRequest;
         HttpServletResponse httpResponse = (HttpServletResponse) servletResponse;
 
         String path = StringUtils.isNotBlank(httpRequest.getContextPath()) ? httpRequest
-                .getContextPath() : httpRequest.getServletPath()
-                + StringUtils.defaultString(httpRequest.getPathInfo());
+          .getContextPath() : httpRequest.getServletPath()
+          + StringUtils.defaultString(httpRequest.getPathInfo());
         LOGGER.debug("Handling request for path {}", path);
 
         String realm = DEFAULT_REALM;
@@ -109,8 +106,8 @@ public class WebSSOFilter implements Filter {
 
         if (isWhiteListed) {
             LOGGER.debug(
-                    "Context of {} has been whitelisted, adding a NO_AUTH_POLICY attribute to the header.",
-                    path);
+              "Context of {} has been whitelisted, adding a NO_AUTH_POLICY attribute to the header.",
+              path);
             servletRequest.setAttribute(ContextPolicy.ACTIVE_REALM, realm);
             servletRequest.setAttribute(ContextPolicy.NO_AUTH_POLICY, true);
             filterChain.doFilter(httpRequest, httpResponse);
@@ -123,14 +120,13 @@ public class WebSSOFilter implements Filter {
     }
 
     private void handleRequest(HttpServletRequest httpRequest, HttpServletResponse httpResponse,
-            FilterChain filterChain, List<AuthenticationHandler> handlerList) throws IOException,
-            ServletException {
+      FilterChain filterChain, List<AuthenticationHandler> handlers) throws IOException, ServletException {
 
         // First pass, see if anyone can come up with proper security token from
         // the git-go
         HandlerResult result = null;
         LOGGER.debug("Checking for existing tokens in request.");
-        for (AuthenticationHandler auth : handlerList) {
+        for (AuthenticationHandler auth : handlers) {
             result = auth.getNormalizedToken(httpRequest, httpResponse, filterChain, false);
             if (result.getStatus() != HandlerResult.Status.NO_ACTION) {
                 break;
@@ -142,7 +138,7 @@ public class WebSSOFilter implements Filter {
             LOGGER.debug("First pass with no tokens found - requesting tokens");
             // This pass, tell each handler to do whatever it takes to get a
             // SecurityToken
-            for (AuthenticationHandler auth : handlerList) {
+            for (AuthenticationHandler auth : handlers) {
                 result = auth.getNormalizedToken(httpRequest, httpResponse, filterChain, true);
                 if (result.getStatus() != HandlerResult.Status.NO_ACTION) {
                     break;
@@ -158,9 +154,14 @@ public class WebSSOFilter implements Filter {
                 LOGGER.debug("Stopping filter chain - handled by plugins");
                 return;
             case NO_ACTION: // should never occur - one of the handlers should
-                            // have returned a token
+                // have returned a token
             case COMPLETED:
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Attaching result handler to the http request - token is instance of {}", result.getToken().getClass().getSimpleName());
+                }
+                httpRequest.setAttribute(DDF_AUTHENTICATION_TOKEN, result);
                 // set the appropriate request attribute
+/*
                 if (result.hasSecurityToken()) {
                     LOGGER.debug("Attaching security token to http request");
                     httpRequest.setAttribute(DDF_SECURITY_TOKEN, result.getCredentials());
@@ -168,12 +169,16 @@ public class WebSSOFilter implements Filter {
                     LOGGER.debug("Attaching authentication credentials to http request");
                     httpRequest.setAttribute(DDF_AUTHENTICATION_TOKEN, result);
                 }
+*/
                 break;
+            default:
+                LOGGER.warn("Unexpected response from handler - ignoring");
+                return;
             }
         } else {
             LOGGER.warn("Expected login credentials - didn't find any. Returning a forbidden response.");
             returnSimpleResponse(HttpServletResponse.SC_FORBIDDEN,
-                    (HttpServletResponse) httpResponse);
+              (HttpServletResponse) httpResponse);
             return;
         }
 
@@ -185,7 +190,7 @@ public class WebSSOFilter implements Filter {
             // First pass, see if anyone can come up with proper security token
             // from the git-go
             result = null;
-            for (AuthenticationHandler auth : handlerList) {
+            for (AuthenticationHandler auth : handlers) {
                 result = auth.handleError(httpRequest, httpResponse, filterChain);
                 if (result.getStatus() != HandlerResult.Status.NO_ACTION) {
                     break;
@@ -201,7 +206,7 @@ public class WebSSOFilter implements Filter {
     }
 
     private List<AuthenticationHandler> getHandlerList(String path) {
-        List<AuthenticationHandler> handlerList = new ArrayList<AuthenticationHandler>();
+        List<AuthenticationHandler> handlers = new ArrayList<AuthenticationHandler>();
         if (contextPolicyManager != null) {
             ContextPolicy policy = contextPolicyManager.getContextPolicy(path);
             if (policy != null) {
@@ -209,25 +214,23 @@ public class WebSSOFilter implements Filter {
                 for (String authMethod : authMethods) {
                     for (AuthenticationHandler handler : this.handlerList) {
                         if (handler.getAuthenticationType().equalsIgnoreCase(authMethod)) {
-                            handlerList.add(handler);
+                            handlers.add(handler);
                         }
                     }
                 }
             }
         } else {
             // if no manager, get a list of all the handlers.
-            handlerList.addAll(this.handlerList);
+            handlers.addAll(this.handlerList);
         }
-        return handlerList;
+        return handlers;
     }
 
     /**
      * Sends the given response code back to the caller.
      *
-     * @param code
-     *            HTTP response code for this request
-     * @param response
-     *            the servlet response object
+     * @param code     HTTP response code for this request
+     * @param response the servlet response object
      */
     private void returnSimpleResponse(int code, HttpServletResponse response) {
         try {
