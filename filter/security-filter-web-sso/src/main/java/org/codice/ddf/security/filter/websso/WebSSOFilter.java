@@ -207,12 +207,15 @@ public class WebSSOFilter implements Filter {
 
     private List<AuthenticationHandler> getHandlerList(String path) {
         List<AuthenticationHandler> handlers = new ArrayList<AuthenticationHandler>();
+        String handlerAuthMethod;
         if (contextPolicyManager != null) {
             ContextPolicy policy = contextPolicyManager.getContextPolicy(path);
             if (policy != null) {
                 Collection<String> authMethods = policy.getAuthenticationMethods();
                 for (String authMethod : authMethods) {
                     for (AuthenticationHandler handler : this.handlerList) {
+                        handlerAuthMethod = handler.getAuthenticationType();
+                        LOGGER.trace("Handler auth method: {} - desired auth method {}", handlerAuthMethod, authMethod);
                         if (handler.getAuthenticationType().equalsIgnoreCase(authMethod)) {
                             handlers.add(handler);
                         }
@@ -223,6 +226,7 @@ public class WebSSOFilter implements Filter {
             // if no manager, get a list of all the handlers.
             handlers.addAll(this.handlerList);
         }
+        LOGGER.trace("Returning {} handlers that support desired auth methods for path {}", handlers.size(), path);
         return handlers;
     }
 
