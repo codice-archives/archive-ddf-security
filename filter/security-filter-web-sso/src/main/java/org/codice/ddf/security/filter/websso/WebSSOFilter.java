@@ -104,11 +104,13 @@ public class WebSSOFilter implements Filter {
             isWhiteListed = contextPolicyManager.isWhiteListed(path);
         }
 
+        // set this so the login filter can easily determine the realm
+        servletRequest.setAttribute(ContextPolicy.ACTIVE_REALM, realm);
+
         if (isWhiteListed) {
             LOGGER.debug(
               "Context of {} has been whitelisted, adding a NO_AUTH_POLICY attribute to the header.",
               path);
-            servletRequest.setAttribute(ContextPolicy.ACTIVE_REALM, realm);
             servletRequest.setAttribute(ContextPolicy.NO_AUTH_POLICY, true);
             filterChain.doFilter(httpRequest, httpResponse);
         } else {
