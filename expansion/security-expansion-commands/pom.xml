@@ -39,6 +39,7 @@
 		<dependency>
 			<groupId>org.apache.karaf.shell</groupId>
 			<artifactId>org.apache.karaf.shell.console</artifactId>
+            <version>${karaf.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.osgi</groupId>
@@ -59,7 +60,7 @@
 							ddf.security.expansion,
 							org.apache.felix.service.command,
 							org.apache.felix.gogo.commands,
-							org.apache.karaf.shell.console,
+							org.apache.karaf.shell.console;version="[2.3,4)",
 							*
 						</Import-Package>
 					</instructions>

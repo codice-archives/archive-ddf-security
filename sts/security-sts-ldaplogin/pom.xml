@@ -38,8 +38,8 @@
                             javax.security.auth.login,
                             javax.net.ssl,
                             javax.naming,
-                            org.apache.karaf.jaas.config,
-                            org.apache.karaf.jaas.modules.ldap
+                            org.apache.karaf.jaas.config;version="[2.3,4)",
+                            org.apache.karaf.jaas.modules.ldap;version="[2.3,4)"
                         </Import-Package>
                         <Private-Package>
                             org.apache.karaf.jaas.config.impl
@@ -55,6 +55,7 @@
         <dependency>
             <groupId>org.apache.karaf.jaas</groupId>
             <artifactId>org.apache.karaf.jaas.modules</artifactId>
+            <version>${karaf.version}</version>
         </dependency>
         <dependency>
             <groupId>org.osgi</groupId>

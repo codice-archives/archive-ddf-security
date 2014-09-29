@@ -24,7 +24,6 @@ import javax.security.auth.Subject;
 import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.login.LoginException;
 
-import org.apache.karaf.jaas.boot.principal.RolePrincipal;
 import org.apache.karaf.jaas.config.KeystoreManager;
 import org.apache.karaf.jaas.modules.ldap.LDAPLoginModule;
 import org.osgi.framework.BundleContext;
