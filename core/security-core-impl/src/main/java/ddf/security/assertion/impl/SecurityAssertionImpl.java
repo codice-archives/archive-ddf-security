@@ -40,6 +40,9 @@ import javax.xml.namespace.QName;
 import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.Serializable;
 import java.security.Principal;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -91,13 +94,18 @@ public class SecurityAssertionImpl implements SecurityAssertion {
 
     private String issuer;
 
-    private List<AttributeStatement> attributeStatements = new ArrayList<>();
+    private transient List<AttributeStatement> attributeStatements;
 
     /**
      * Uninitialized Constructor
      */
     public SecurityAssertionImpl() {
+        init();
+    }
 
+    private void readObject(ObjectInputStream objectInputStream) throws IOException, ClassNotFoundException {
+        objectInputStream.defaultReadObject();
+        init();
     }
 
     /**
@@ -106,8 +114,13 @@ public class SecurityAssertionImpl implements SecurityAssertion {
      * @param securityToken - token to wrap
      */
     public SecurityAssertionImpl(SecurityToken securityToken) {
+        init();
         this.securityToken = securityToken;
         parseToken(securityToken);
+    }
+
+    private void init() {
+        attributeStatements = new ArrayList<>();
     }
 
     /**
@@ -197,7 +210,7 @@ public class SecurityAssertionImpl implements SecurityAssertion {
     public Principal getPrincipal() {
         if (securityToken != null) {
             if (principal == null) {
-                principal = new AssertionPrincipal();
+                principal = new AssertionPrincipal(name);
             }
             return principal;
         }
@@ -282,7 +295,11 @@ public class SecurityAssertionImpl implements SecurityAssertion {
         return result.toString();
     }
 
-    private class XMLString implements XSString {
+    /**
+     * Represents the String values parsed out of the SAML assertion.
+     * This class only has the value field implemented for performance reasons.
+     */
+    private static class XMLString implements XSString {
         private String value;
 
         protected XMLString() {
@@ -417,12 +434,12 @@ public class SecurityAssertionImpl implements SecurityAssertion {
 
         @Override
         public Boolean isNil() {
-            return null;
+            return false;
         }
 
         @Override
         public XSBooleanValue isNilXSBoolean() {
-            return null;
+            return new XSBooleanValue();
         }
 
         @Override
@@ -456,7 +473,11 @@ public class SecurityAssertionImpl implements SecurityAssertion {
         }
     }
 
-    private class Attr implements Attribute {
+    /**
+     * This class represents an attribute that has been specified in the SAML assertion.
+     * Only the required minimum methods are implemented for performance reasons.
+     */
+    private static class Attr implements Attribute {
 
         private String name;
 
@@ -635,12 +656,12 @@ public class SecurityAssertionImpl implements SecurityAssertion {
 
         @Override
         public Boolean isNil() {
-            return null;
+            return false;
         }
 
         @Override
         public XSBooleanValue isNilXSBoolean() {
-            return null;
+            return new XSBooleanValue();
         }
 
         @Override
@@ -674,7 +695,11 @@ public class SecurityAssertionImpl implements SecurityAssertion {
         }
     }
 
-    private class AttrStatement implements AttributeStatement {
+    /**
+     * This class represents an attribute statement within a SAML assertion.
+     * Only the required minimum methods are implemented for performance reasons.
+     */
+    private static class AttrStatement implements AttributeStatement {
 
         private List<Attribute> attributes = new ArrayList<>();
 
@@ -823,12 +848,12 @@ public class SecurityAssertionImpl implements SecurityAssertion {
 
         @Override
         public Boolean isNil() {
-            return null;
+            return false;
         }
 
         @Override
         public XSBooleanValue isNilXSBoolean() {
-            return null;
+            return new XSBooleanValue();
         }
 
         @Override
@@ -865,7 +890,13 @@ public class SecurityAssertionImpl implements SecurityAssertion {
     /**
      * Principal implementation that returns values obtained from the assertion.
      */
-    private class AssertionPrincipal implements Principal {
+    private static class AssertionPrincipal implements Principal, Serializable {
+        private String name;
+
+        public AssertionPrincipal(String name) {
+            this.name = name;
+        }
+
         @Override
         public String getName() {
             return name;

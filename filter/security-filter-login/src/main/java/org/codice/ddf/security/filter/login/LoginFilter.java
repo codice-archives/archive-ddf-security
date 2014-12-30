@@ -197,8 +197,12 @@ public class LoginFilter implements Filter {
             if (token.isReference()) {
                 wasReference = true;
                 LOGGER.trace("Converting SAML reference to assertion");
-                SecurityToken savedToken = (SecurityToken) httpRequest.getSession(false).getAttribute(
-                        SecurityConstants.SAML_ASSERTION);
+                Object sessionToken = httpRequest.getSession(false).getAttribute(SecurityConstants.SAML_ASSERTION);
+                if (LOGGER.isTraceEnabled()) {
+                    LOGGER.trace("Http Session assertion - class: {}  loader: {}", sessionToken.getClass().getName(), sessionToken.getClass().getClassLoader());
+                    LOGGER.trace("SecurityToken class: {}  loader: {}", SecurityToken.class.getName(), SecurityToken.class.getClassLoader());
+                }
+                SecurityToken savedToken = (SecurityToken) sessionToken;
                 if (savedToken != null) {
                     token.replaceReferenece(savedToken);
                 }
@@ -254,50 +258,56 @@ public class LoginFilter implements Filter {
 
     private void renewSecurityToken(HttpSession session, SAMLAuthenticationToken savedToken) throws WSSecurityException {
         long timeoutSeconds = -1;
-        Long afterMil = (Long) session.getAttribute(SAML_EXPIRATION);
-        long beforeMil = System.currentTimeMillis();
-        if (afterMil == null) {
-            synchronized (lock) {
-                AssertionWrapper assertion = new AssertionWrapper(((SecurityToken) savedToken.getCredentials()).getToken());
-                if (assertion.getSaml2() != null) {
-                    DateTime after = assertion.getSaml2().getConditions().getNotOnOrAfter();
-                    afterMil = after.getMillis();
+        if (session != null) {
+            Long afterMil = (Long) session.getAttribute(SAML_EXPIRATION);
+            long beforeMil = System.currentTimeMillis();
+            if (afterMil == null) {
+                synchronized (lock) {
+                    AssertionWrapper assertion = new AssertionWrapper(((SecurityToken) savedToken.getCredentials()).getToken());
+                    if (assertion.getSaml2() != null) {
+                        DateTime after = assertion.getSaml2().getConditions().getNotOnOrAfter();
+                        afterMil = after.getMillis();
+                    }
                 }
             }
-        }
 
-        if (afterMil != null) {
-            timeoutSeconds = (afterMil - beforeMil) / 1000;
-        }
-        if (timeoutSeconds <= 60) {
-            synchronized (lock) {
-                try {
-                    LOGGER.debug("Attempting to refresh user's SAML assertion.");
+            if (afterMil != null) {
+                timeoutSeconds = (afterMil - beforeMil) / 1000;
+            }
+            if (timeoutSeconds <= 60) {
+                synchronized (lock) {
+                    try {
+                        LOGGER.debug("Attempting to refresh user's SAML assertion.");
 
-                    Subject subject = securityManager.getSubject(savedToken);
-                    LOGGER.debug("Refresh of user assertion successful");
-                    for (Object principal : subject.getPrincipals()) {
-                        if (principal instanceof SecurityAssertion) {
-                            savedToken.replaceReferenece(((SecurityAssertion) principal).getSecurityToken());
-                            session.setAttribute(SecurityConstants.SAML_ASSERTION, ((SecurityAssertion) principal).getSecurityToken());
+                        Subject subject = securityManager.getSubject(savedToken);
+                        LOGGER.debug("Refresh of user assertion successful");
+                        for (Object principal : subject.getPrincipals()) {
+                            if (principal instanceof SecurityAssertion) {
+                                SecurityToken token = ((SecurityAssertion) principal).getSecurityToken();
+                                savedToken.replaceReferenece(token);
+                                if (LOGGER.isTraceEnabled()) {
+                                    LOGGER.trace("Setting session token - class: {}  classloader: {}", token.getClass().getName(), token.getClass().getClassLoader());
+                                }
+                                session.setAttribute(SecurityConstants.SAML_ASSERTION, token);
 
-                            AssertionWrapper assertion = new AssertionWrapper(((SecurityToken) savedToken.getCredentials()).getToken());
-                            if (assertion.getSaml2() != null) {
-                                DateTime after = assertion.getSaml2().getConditions().getNotOnOrAfter();
-                                afterMil = after.getMillis();
+                                AssertionWrapper assertion = new AssertionWrapper(((SecurityToken) savedToken.getCredentials()).getToken());
+                                if (assertion.getSaml2() != null) {
+                                    DateTime after = assertion.getSaml2().getConditions().getNotOnOrAfter();
+                                    afterMil = after.getMillis();
+                                }
+
+                                session.setAttribute(SAML_EXPIRATION, afterMil);
+                                LOGGER.debug("Saved new user assertion to session.");
                             }
-
-                            session.setAttribute(SAML_EXPIRATION, afterMil);
-                            LOGGER.debug("Saved new user assertion to session.");
                         }
-                    }
 
-                } catch (SecurityServiceException e) {
-                    LOGGER.warn("Unable to refresh user's SAML assertion. User will log out prematurely.", e);
-                    session.invalidate();
-                } catch (Exception e) {
-                    LOGGER.warn("Unhandled exception occurred.", e);
-                    session.invalidate();
+                    } catch (SecurityServiceException e) {
+                        LOGGER.warn("Unable to refresh user's SAML assertion. User will log out prematurely.", e);
+                        session.invalidate();
+                    } catch (Exception e) {
+                        LOGGER.warn("Unhandled exception occurred.", e);
+                        session.invalidate();
+                    }
                 }
             }
         }
@@ -438,6 +448,9 @@ public class LoginFilter implements Filter {
         synchronized (lock) {
             HttpSession session = httpRequest.getSession(true);
             if (session.getAttribute(SecurityConstants.SAML_ASSERTION) == null) {
+                if (LOGGER.isTraceEnabled()) {
+                    LOGGER.trace("Creating token in session - class: {}  classloader: {}", securityToken.getClass().getName(), securityToken.getClass().getClassLoader());
+                }
                 session.setAttribute(SecurityConstants.SAML_ASSERTION, securityToken);
                 AssertionWrapper assertion = null;
                 DateTime after = null;
