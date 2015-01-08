@@ -14,24 +14,24 @@
  **/
 package ddf.security.pep.interceptor;
 
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
+import org.apache.cxf.binding.soap.model.SoapOperationInfo;
 import org.apache.cxf.interceptor.security.AccessDeniedException;
 import org.apache.cxf.message.Message;
-
+import org.codice.ddf.security.handler.api.AnonymousAuthenticationToken;
+import org.hamcrest.Matchers;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
-
+import org.mockito.Mockito;
 import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import ddf.security.common.audit.SecurityLogger;
+import ddf.security.service.SecurityManager;
 import ddf.security.service.impl.SecurityAssertionStore;
 
 @RunWith(PowerMockRunner.class)
@@ -42,17 +42,24 @@ public class TestPepInterceptorNullAssertion {
     public ExpectedException expectedExForNullMessage = ExpectedException.none();
 
     @Test
-    public void testMessageNullSecurityAssertion() {
+    public void testMessageNullSecurityAssertion() throws Exception {
         PEPAuthorizingInterceptor interceptor = new PEPAuthorizingInterceptor();
+        SecurityManager mockSecurityManager = mock(SecurityManager.class);
+        interceptor.setSecurityManager(mockSecurityManager);
 
         Message messageWithNullSecurityAssertion = mock(Message.class);
+        
+        
+        PowerMockito.mockStatic(SoapOperationInfo.class);
         PowerMockito.mockStatic(SecurityAssertionStore.class);
         PowerMockito.mockStatic(SecurityLogger.class);
-        when(SecurityAssertionStore.getSecurityAssertion(messageWithNullSecurityAssertion)).thenReturn(null);
-        // SecurityLogger is already stubbed out
+
         expectedExForNullMessage.expect(AccessDeniedException.class);
         expectedExForNullMessage.expectMessage("Unauthorized");
+
         interceptor.handleMessage(messageWithNullSecurityAssertion);
+        Mockito.verify(mockSecurityManager).getSubject(
+                Matchers.any(AnonymousAuthenticationToken.class));
 
         PowerMockito.verifyStatic();
     }
