@@ -61,9 +61,13 @@ public class PEPAuthorizingInterceptor extends AbstractPhaseInterceptor<Message>
 
     private SecurityManager securityManager;
 
+    private String realm;
+
     public PEPAuthorizingInterceptor() {
         super(Phase.PRE_INVOKE);
         addAfter(org.apache.cxf.ws.policy.PolicyVerificationInInterceptor.class.getName());
+        // Default to DDF if no other realm is passed in
+        realm = "DDF";
     }
 
     /**
@@ -74,6 +78,10 @@ public class PEPAuthorizingInterceptor extends AbstractPhaseInterceptor<Message>
     public void setSecurityManager(SecurityManager securityManager) {
         logger.trace("Setting the security manager");
         this.securityManager = securityManager;
+    }
+
+    public void setRealm(String realm) {
+        this.realm = realm;
     }
 
     /**
@@ -99,7 +107,7 @@ public class PEPAuthorizingInterceptor extends AbstractPhaseInterceptor<Message>
             } else {
                 // Create an anonymous token to pass to PDP to see if anon
                 // access is allowed
-                securityToken = new AnonymousAuthenticationToken("DDF");
+                securityToken = new AnonymousAuthenticationToken(realm);
                 logger.debug("No Token was provided so generating a token for an anonymous user"
                         + " to be used for authorization calls");
             }
