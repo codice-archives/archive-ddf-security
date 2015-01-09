@@ -63,11 +63,14 @@ public class PEPAuthorizingInterceptor extends AbstractPhaseInterceptor<Message>
 
     private String realm;
 
+    private boolean alwaysDenyAnonymousAccess;
+
     public PEPAuthorizingInterceptor() {
         super(Phase.PRE_INVOKE);
         addAfter(org.apache.cxf.ws.policy.PolicyVerificationInInterceptor.class.getName());
         // Default to DDF if no other realm is passed in
         realm = "DDF";
+        alwaysDenyAnonymousAccess = false;
     }
 
     /**
@@ -82,6 +85,10 @@ public class PEPAuthorizingInterceptor extends AbstractPhaseInterceptor<Message>
 
     public void setRealm(String realm) {
         this.realm = realm;
+    }
+
+    public void setAlwaysDenyAnonymousAccess(boolean denyAnon) {
+        this.alwaysDenyAnonymousAccess = denyAnon;
     }
 
     /**
@@ -104,12 +111,17 @@ public class PEPAuthorizingInterceptor extends AbstractPhaseInterceptor<Message>
                 if (logger.isTraceEnabled()) {
                     logger.trace(format(((SecurityToken) securityToken).getToken()));
                 }
-            } else {
+            } else if (!alwaysDenyAnonymousAccess) {
                 // Create an anonymous token to pass to PDP to see if anon
                 // access is allowed
                 securityToken = new AnonymousAuthenticationToken(realm);
                 logger.debug("No Token was provided so generating a token for an anonymous user"
                         + " to be used for authorization calls");
+            } else {
+                logger.warn("Anonymous Access is not allowed per PEP Configuration, request will be denied acccess");
+                SecurityLogger
+                        .logWarn("Anonymous Access is not allowed per PEP Configuration, request will be denied acccess");
+                throw new AccessDeniedException("Unauthorized");
             }
 
             Subject user;
