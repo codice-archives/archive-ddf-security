@@ -37,6 +37,8 @@ import org.apache.cxf.service.model.BindingOperationInfo;
 import org.apache.cxf.service.model.MessageInfo;
 import org.apache.cxf.ws.addressing.JAXWSAConstants;
 import org.apache.cxf.ws.addressing.Names;
+import org.apache.cxf.ws.security.tokenstore.SecurityToken;
+import org.codice.ddf.security.handler.api.AnonymousAuthenticationToken;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Element;
@@ -52,7 +54,6 @@ import ddf.security.service.impl.SecurityAssertionStore;
 
 /**
  * Interceptor used to perform service authentication.
- *
  */
 public class PEPAuthorizingInterceptor extends AbstractPhaseInterceptor<Message> {
 
@@ -60,9 +61,16 @@ public class PEPAuthorizingInterceptor extends AbstractPhaseInterceptor<Message>
 
     private SecurityManager securityManager;
 
+    private String realm;
+
+    private boolean alwaysDenyAnonymousAccess;
+
     public PEPAuthorizingInterceptor() {
         super(Phase.PRE_INVOKE);
         addAfter(org.apache.cxf.ws.policy.PolicyVerificationInInterceptor.class.getName());
+        // Default to DDF if no other realm is passed in
+        realm = "DDF";
+        alwaysDenyAnonymousAccess = false;
     }
 
     /**
@@ -73,6 +81,14 @@ public class PEPAuthorizingInterceptor extends AbstractPhaseInterceptor<Message>
     public void setSecurityManager(SecurityManager securityManager) {
         logger.trace("Setting the security manager");
         this.securityManager = securityManager;
+    }
+
+    public void setRealm(String realm) {
+        this.realm = realm;
+    }
+
+    public void setAlwaysDenyAnonymousAccess(boolean denyAnon) {
+        this.alwaysDenyAnonymousAccess = denyAnon;
     }
 
     /**
@@ -89,68 +105,78 @@ public class PEPAuthorizingInterceptor extends AbstractPhaseInterceptor<Message>
             SecurityAssertion assertion = SecurityAssertionStore.getSecurityAssertion(message);
             SecurityLogger.logSecurityAssertionInfo(message);
             boolean isPermitted = false;
-
-            if ((assertion != null) && (assertion.getSecurityToken() != null)) {
-                Subject user = null;
-                ActionPermission action = null;
-
-                String actionURI = getActionUri(message);
-
-                try {
-                    user = securityManager.getSubject(assertion.getSecurityToken());
-                    if (user == null) {
-                        throw new AccessDeniedException("Unauthorized");
-                    }
-                    if (logger.isTraceEnabled()) {
-                        logger.trace(format(assertion.getSecurityToken().getToken()));
-                    }
-
-                    logger.debug("Is user authenticated: {}", user.isAuthenticated());
-
-                    logger.debug("Checking for permission");
-                    SecurityLogger.logInfo("Is user [" + user.getPrincipal() + "] authenticated: "
-                            + user.isAuthenticated());
-
-                    if (StringUtils.isEmpty(actionURI)) {
-                        logger.info("Denying access : unable to determine action for {}",
-                                user.getPrincipal());
-                        SecurityLogger.logWarn("Denying access to [" + user.getPrincipal()
-                                + "] for unknown action.");
-                        throw new AccessDeniedException("Unauthorized");
-                    }
-
-                    action = new ActionPermission(actionURI);
-                    logger.debug("Action Permission: {}", action);
-
-                    isPermitted = user.isPermitted(action);
-
-                    logger.debug("Result of permission: {}", isPermitted);
-                    SecurityLogger.logInfo("Is user [" + user.getPrincipal() + "] permitted: "
-                            + isPermitted);
-                    // store the subject so the DDF framework can use it later
-                    message.put(SecurityConstants.SAML_ASSERTION, user);
-                    logger.debug("Added assertion information to message at key {}",
-                            SecurityConstants.SAML_ASSERTION);
-                } catch (SecurityServiceException e) {
-                    logger.warn("Caught exception when trying to perform AuthZ.", e);
-                    SecurityLogger.logWarn(
-                            "Denying access : Caught exception when trying to authenticate user for service ["
-                                    + actionURI + "]", e);
-                    throw new AccessDeniedException("Unauthorized");
+            Object securityToken = null;
+            if (assertion != null && assertion.getSecurityToken() != null) {
+                securityToken = assertion.getSecurityToken();
+                if (logger.isTraceEnabled()) {
+                    logger.trace(format(((SecurityToken) securityToken).getToken()));
                 }
-                if (!isPermitted) {
-                    if (action != null) {
-                        logger.info("Denying access to {} for service {}", user.getPrincipal(),
-                                action.getAction());
-                        SecurityLogger.logWarn("Denying access to [" + user.getPrincipal()
-                                + "] for service " + action.getAction());
-                    }
-                    throw new AccessDeniedException("Unauthorized");
-                }
+            } else if (!alwaysDenyAnonymousAccess) {
+                // Create an anonymous token to pass to PDP to see if anon
+                // access is allowed
+                securityToken = new AnonymousAuthenticationToken(realm);
+                logger.debug("No Token was provided so generating a token for an anonymous user"
+                        + " to be used for authorization calls");
             } else {
-                logger.warn("Unable to retrieve the security assertion associated with the web service call.");
+                logger.warn("Anonymous Access is not allowed per PEP Configuration, request will be denied acccess");
+                SecurityLogger
+                        .logWarn("Anonymous Access is not allowed per PEP Configuration, request will be denied acccess");
                 throw new AccessDeniedException("Unauthorized");
             }
+
+            Subject user;
+            try {
+                user = securityManager.getSubject(securityToken);
+            } catch (SecurityServiceException e) {
+                logger.warn("Caught exception when trying to perform AuthZ.", e);
+                SecurityLogger.logWarn(
+                        "Denying access because the authetnication token was not properly "
+                                + "formated or could not be found or generated",
+                                e);
+                throw new AccessDeniedException("Unauthorized");
+            }
+
+            if (user == null) {
+                throw new AccessDeniedException("Unauthorized");
+            }
+
+            logger.debug("Is user authenticated: {}", user.isAuthenticated());
+
+            SecurityLogger.logInfo("Is user [" + user.getPrincipal() + "] authenticated: "
+                    + user.isAuthenticated());
+
+            String actionURI = getActionUri(message);
+            if (StringUtils.isEmpty(actionURI)) {
+                logger.info("Denying access : unable to determine action for {}",
+                        user.getPrincipal());
+                SecurityLogger.logWarn("Denying access to [" + user.getPrincipal()
+                        + "] for unknown action.");
+                throw new AccessDeniedException("Unauthorized");
+            }
+
+            ActionPermission action = new ActionPermission(actionURI);
+            logger.debug("Action Permission: {}", action);
+
+            isPermitted = user.isPermitted(action);
+
+            logger.debug("Result of permission: {}", isPermitted);
+            SecurityLogger.logInfo("Is user [" + user.getPrincipal() + "] permitted: "
+                    + isPermitted);
+            // store the subject so the DDF framework can use it later
+            message.put(SecurityConstants.SAML_ASSERTION, user);
+            logger.debug("Added assertion information to message at key {}",
+                    SecurityConstants.SAML_ASSERTION);
+
+            if (!isPermitted) {
+                if (action != null) {
+                    logger.info("Denying access to {} for service {}", user.getPrincipal(),
+                            action.getAction());
+                    SecurityLogger.logWarn("Denying access to [" + user.getPrincipal()
+                            + "] for service " + action.getAction());
+                }
+                throw new AccessDeniedException("Unauthorized");
+            }
+
         } else {
             logger.warn("Unable to retrieve the current message associated with the web service call.");
             throw new AccessDeniedException("Unauthorized");
