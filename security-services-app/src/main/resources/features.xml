@@ -121,7 +121,6 @@
         <feature>security-core</feature>
         <feature>security-policy-context</feature>
         <feature>security-web-sso-defaults</feature>
-        <feature>security-interceptor-anonymous-wrapper</feature>
         <feature>security-anonymous</feature>
     </feature>
 
@@ -206,11 +205,6 @@
     <feature name="security-interceptor-anonymous" install="manual" version="${project.version}"
              description="Injects anonymous user information into incoming SOAP messages.">
         <bundle>mvn:ddf.security.interceptor/security-interceptor-anonymous/${project.version}</bundle>
-    </feature>
-    
-    <feature name="security-interceptor-anonymous-wrapper" install="manual" version="${project.version}"
-             description="Wrapper for Security Interceptor Anonymous that injects anonymous user information into incoming SOAP messages.">
-        <bundle>mvn:ddf.security.interceptor/security-interceptor-anonymous-wrapper/${project.version}</bundle>
     </feature>
 
     <feature name="security-anonymous" install="manual" version="${project.version}"
