@@ -174,7 +174,7 @@ public class WebSSOFilterTest {
         HttpServletResponse response = mock(HttpServletResponse.class);
         filter.doFilter(request, response, filterChain);
 
-        verify(response).setStatus(HttpServletResponse.SC_FORBIDDEN);
+        verify(response).setStatus(HttpServletResponse.SC_BAD_REQUEST);
         verify(response).flushBuffer();
         verify(filterChain, never()).doFilter(request, response);
     }
