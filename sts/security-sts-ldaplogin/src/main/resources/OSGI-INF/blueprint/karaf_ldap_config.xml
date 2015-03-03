@@ -29,7 +29,7 @@
         <!-- Default properties -->
         <property name="ldapBindUserDn" value="cn=admin" />
         <property name="ldapBindUserPass" value="ENC(c+GitDfYAMTDRESXSDDsMw==)" />
-        <property name="ldapUrl" value="ldaps://localhost:1636" />
+        <property name="ldapUrl" value="ldap://localhost:1389" />
         <property name="userBaseDn" value="ou=users,dc=example,dc=com" />
         <property name="groupBaseDn" value="ou=groups,dc=example,dc=com" />
         <property name="keyAlias" value="localhost" />
